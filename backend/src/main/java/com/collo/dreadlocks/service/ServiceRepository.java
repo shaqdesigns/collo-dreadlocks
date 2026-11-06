@@ -19,15 +19,17 @@ public interface ServiceRepository extends JpaRepository<Service, Integer> {
 
     boolean existsBySlug(String slug);
 
-    @Query(value = """
-        SELECT s.*
-        FROM services s
-        INNER JOIN salonist_services ss
-            ON ss.service_id = s.id
-        WHERE ss.salonist_id = :salonistId
-          AND s.is_active = 1
+    @Query("""
+        SELECT s
+        FROM Service s
+        WHERE s.id IN (
+            SELECT link.serviceId
+            FROM SalonistServiceLink link
+            WHERE link.salonistId = :salonistId
+        )
+        AND s.isActive = true
         ORDER BY s.name
-        """, nativeQuery = true)
+        """)
     List<Service> findActiveServicesBySalonistId(
             @Param("salonistId") Integer salonistId
     );
