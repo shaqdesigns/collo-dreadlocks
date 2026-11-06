@@ -21,9 +21,42 @@ import type {
   Customer,
 } from '../types/catalog'
 
+const apiBase = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '')
+
+function absoluteMedia(path: string): string {
+  if (/^https?:\/\//i.test(path) || !apiBase.startsWith('http')) {
+    return path
+  }
+  const origin = apiBase.replace(/\/api$/, '')
+  return `${origin}${path.startsWith('/') ? path : `/${path}`}`
+}
+
+function rewriteMedia(value: unknown): void {
+  if (!value || typeof value !== 'object') {
+    return
+  }
+  if (Array.isArray(value)) {
+    value.forEach(rewriteMedia)
+    return
+  }
+  const record = value as Record<string, unknown>
+  for (const [key, child] of Object.entries(record)) {
+    if ((key === 'imageUrl' || key === 'profileImageUrl') && typeof child === 'string') {
+      record[key] = absoluteMedia(child)
+    } else if (child && typeof child === 'object') {
+      rewriteMedia(child)
+    }
+  }
+}
+
 const http = axios.create({
-  baseURL: '/api',
+  baseURL: apiBase,
   timeout: 15000,
+})
+
+http.interceptors.response.use((response) => {
+  rewriteMedia(response.data)
+  return response
 })
 
 http.interceptors.request.use((config) => {
