@@ -50,4 +50,9 @@ public class ServiceController {
                 salonistCatalogService.getSalonistsForService(id)
         );
     }
+
+    @GetMapping("/{id}/photos")
+    public ResponseEntity<List<ServicePhotoResponse>> photos(@PathVariable Integer id) {
+        return ResponseEntity.ok(serviceCatalogService.listPhotos(id));
+    }
 }

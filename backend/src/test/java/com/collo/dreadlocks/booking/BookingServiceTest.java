@@ -10,6 +10,7 @@ import com.collo.dreadlocks.salonist.SalonistRepository;
 import com.collo.dreadlocks.service.Service;
 import com.collo.dreadlocks.service.ServiceNotFoundException;
 import com.collo.dreadlocks.service.ServiceRepository;
+import com.collo.dreadlocks.unavailability.UnavailabilityService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -50,6 +51,8 @@ class BookingServiceTest {
     private SalonistAvailabilityRepository availabilityRepository;
     @Mock
     private CustomerService customerService;
+    @Mock
+    private UnavailabilityService unavailabilityService;
 
     private BookingService bookingService;
 
@@ -61,6 +64,8 @@ class BookingServiceTest {
                 salonistRepository,
                 availabilityRepository,
                 customerService,
+                unavailabilityService,
+                org.mockito.Mockito.mock(com.collo.dreadlocks.notification.NotificationService.class),
                 CLOCK
         );
     }
@@ -99,6 +104,7 @@ class BookingServiceTest {
                 any(),
                 any()
         )).thenReturn(List.of(existing));
+        when(unavailabilityService.approvedOverlapping(eq(1), any(), any())).thenReturn(List.of());
 
         List<BookingSlotResponse> slots = bookingService.getSlots(1, LocalDate.of(2026, 11, 10), 1);
 
@@ -117,6 +123,7 @@ class BookingServiceTest {
         when(bookingRepository.findBySalonistIdAndStatusInAndStartAtLessThanAndEndAtGreaterThan(
                 eq(1), any(), any(), any()
         )).thenReturn(List.of());
+        when(unavailabilityService.approvedOverlapping(eq(1), any(), any())).thenReturn(List.of());
         when(bookingRepository.lockOverlapping(eq(1), any(), any(), any())).thenReturn(List.of());
         when(customerService.findOrCreateGuest("Guest Client", "0799000001", null))
                 .thenReturn(guest());

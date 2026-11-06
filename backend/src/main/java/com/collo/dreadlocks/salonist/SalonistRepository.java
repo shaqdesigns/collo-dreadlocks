@@ -11,6 +11,8 @@ public interface SalonistRepository extends JpaRepository<Salonist, Integer> {
 
     List<Salonist> findByIsActiveTrueOrderByNameAsc();
 
+    List<Salonist> findAllByOrderByNameAsc();
+
     Optional<Salonist> findByIdAndIsActiveTrue(Integer id);
 
     @Query("""

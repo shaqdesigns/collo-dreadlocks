@@ -1,14 +1,18 @@
 package com.collo.dreadlocks.booking;
 
+import com.collo.dreadlocks.auth.ForbiddenOperationException;
 import com.collo.dreadlocks.availability.SalonistAvailability;
 import com.collo.dreadlocks.availability.SalonistAvailabilityRepository;
 import com.collo.dreadlocks.customer.Customer;
 import com.collo.dreadlocks.customer.CustomerService;
+import com.collo.dreadlocks.notification.NotificationService;
 import com.collo.dreadlocks.salonist.Salonist;
 import com.collo.dreadlocks.salonist.SalonistNotFoundException;
 import com.collo.dreadlocks.salonist.SalonistRepository;
 import com.collo.dreadlocks.service.ServiceNotFoundException;
 import com.collo.dreadlocks.service.ServiceRepository;
+import com.collo.dreadlocks.unavailability.UnavailabilityRequest;
+import com.collo.dreadlocks.unavailability.UnavailabilityService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +38,8 @@ public class BookingService {
     private final SalonistRepository salonistRepository;
     private final SalonistAvailabilityRepository availabilityRepository;
     private final CustomerService customerService;
+    private final UnavailabilityService unavailabilityService;
+    private final NotificationService notificationService;
     private final Clock clock;
 
     public BookingService(
@@ -42,12 +48,16 @@ public class BookingService {
             SalonistRepository salonistRepository,
             SalonistAvailabilityRepository availabilityRepository,
             CustomerService customerService,
+            UnavailabilityService unavailabilityService,
+            NotificationService notificationService,
             Clock clock) {
         this.bookingRepository = bookingRepository;
         this.serviceRepository = serviceRepository;
         this.salonistRepository = salonistRepository;
         this.availabilityRepository = availabilityRepository;
         this.customerService = customerService;
+        this.unavailabilityService = unavailabilityService;
+        this.notificationService = notificationService;
         this.clock = clock;
     }
 
@@ -102,7 +112,12 @@ public class BookingService {
                 startAt,
                 endAt
         );
-        if (!overlapping.isEmpty()) {
+        if (!overlapping.isEmpty()
+                || !unavailabilityService.approvedOverlapping(
+                selected.salonistId(),
+                startAt,
+                endAt
+        ).isEmpty()) {
             throw new BookingConflictException("This appointment slot is no longer available");
         }
 
@@ -124,7 +139,9 @@ public class BookingService {
         booking.setPrice(service.getPrice());
         booking.setDurationMinutes(service.getDurationMinutes());
 
-        return toResponse(bookingRepository.save(booking));
+        BookingResponse response = toResponse(bookingRepository.save(booking));
+        notificationService.notifyNewBooking(response);
+        return response;
     }
 
     public BookingResponse getByReference(UUID reference) {
@@ -153,6 +170,23 @@ public class BookingService {
                 .toList();
     }
 
+    public List<BookingResponse> getBySalonist(Integer salonistId, LocalDate date) {
+        return bookingRepository.findBySalonistIdOrderByStartAtDesc(salonistId)
+                .stream()
+                .filter(booking -> date == null || booking.getStartAt().toLocalDate().equals(date))
+                .map(this::toResponse)
+                .toList();
+    }
+
+    @Transactional
+    public BookingResponse completeForSalonist(Integer bookingId, Integer salonistId) {
+        Booking booking = requireBooking(bookingId);
+        if (!booking.getSalonistId().equals(salonistId)) {
+            throw new ForbiddenOperationException("This booking does not belong to the salonist");
+        }
+        return transition(bookingId, BookingStatus.COMPLETED);
+    }
+
     @Transactional
     public BookingResponse confirm(Integer id) {
         return transition(id, BookingStatus.CONFIRMED);
@@ -175,13 +209,37 @@ public class BookingService {
 
     private BookingResponse transition(Integer id, BookingStatus target) {
         Booking booking = requireBooking(id);
+        if (target == BookingStatus.CONFIRMED) {
+            ensureSlotFree(booking);
+        }
         if (!BookingStatusTransitions.canTransition(booking.getStatus(), target)) {
             throw new InvalidBookingException(
                     "Cannot change booking from " + booking.getStatus() + " to " + target
             );
         }
         booking.setStatus(target);
-        return toResponse(bookingRepository.save(booking));
+        BookingResponse response = toResponse(bookingRepository.save(booking));
+        if (target == BookingStatus.CONFIRMED) {
+            notificationService.notifyBookingConfirmed(response);
+        }
+        return response;
+    }
+
+    private void ensureSlotFree(Booking booking) {
+        boolean taken = bookingRepository.lockOverlapping(
+                booking.getSalonistId(),
+                OCCUPYING_STATUSES,
+                booking.getStartAt(),
+                booking.getEndAt()
+        ).stream().anyMatch(existing -> !existing.getId().equals(booking.getId()));
+        boolean off = !unavailabilityService.approvedOverlapping(
+                booking.getSalonistId(),
+                booking.getStartAt(),
+                booking.getEndAt()
+        ).isEmpty();
+        if (taken || off) {
+            throw new BookingConflictException("This salonist is already booked or off at that time");
+        }
     }
 
     private List<BookingSlotResponse> slotsForSalonist(
@@ -204,6 +262,11 @@ public class BookingService {
                         dayEnd,
                         dayStart
                 );
+        List<UnavailabilityRequest> blocked = unavailabilityService.approvedOverlapping(
+                salonist.getId(),
+                dayStart,
+                dayEnd
+        );
 
         LocalTime notBefore = date.equals(now.toLocalDate()) ? now.toLocalTime() : null;
         List<BookingSlotResponse> slots = new ArrayList<>();
@@ -218,7 +281,9 @@ public class BookingService {
                 LocalDateTime endAt = startAt.plusMinutes(service.getDurationMinutes());
                 boolean taken = occupying.stream().anyMatch(existing ->
                         BookingSlots.overlaps(startAt, endAt, existing.getStartAt(), existing.getEndAt()));
-                if (!taken) {
+                boolean unavailable = blocked.stream().anyMatch(existing ->
+                        BookingSlots.overlaps(startAt, endAt, existing.getStartAt(), existing.getEndAt()));
+                if (!taken && !unavailable) {
                     slots.add(new BookingSlotResponse(
                             salonist.getId(),
                             salonist.getName(),

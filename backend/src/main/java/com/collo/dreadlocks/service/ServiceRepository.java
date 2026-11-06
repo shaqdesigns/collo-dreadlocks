@@ -15,6 +15,10 @@ public interface ServiceRepository extends JpaRepository<Service, Integer> {
 
     Optional<Service> findBySlugAndIsActiveTrue(String slug);
 
+    Optional<Service> findBySlug(String slug);
+
+    boolean existsBySlug(String slug);
+
     @Query(value = """
         SELECT s.*
         FROM services s

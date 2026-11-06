@@ -39,4 +39,10 @@ public interface SalonistServiceRepository
     List<Salonist> findActiveSalonistsByServiceId(
             @Param("serviceId") Integer serviceId
     );
+
+    @Query("SELECT link FROM SalonistServiceLink link WHERE link.salonistId = :salonistId")
+    List<SalonistServiceLink> findBySalonistId(@Param("salonistId") Integer salonistId);
+
+    @Query("SELECT link FROM SalonistServiceLink link WHERE link.serviceId = :serviceId")
+    List<SalonistServiceLink> findByServiceId(@Param("serviceId") Integer serviceId);
 }

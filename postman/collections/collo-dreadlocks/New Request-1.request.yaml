@@ -1,0 +1,50 @@
+$kind: http-request
+name: New Request
+url: '{{base_url}}/api/admin/bookings'
+method: GET
+order: 2000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{admin_token}}'
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      const token = pm.environment.get('admin_token');
+
+      function needsRefresh(jwt) {
+        if (!jwt) return true;
+        try {
+          const payload = jwt.split('.')[1];
+          // Base64url decode
+          const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+          const padded = base64 + '=='.slice(0, (4 - base64.length % 4) % 4);
+          const decoded = JSON.parse(atob(padded));
+          const now = Math.floor(Date.now() / 1000);
+          return decoded.exp - now <= 60;
+        } catch (e) {
+          return true;
+        }
+      }
+
+      if (needsRefresh(token)) {
+        pm.sendRequest({
+          url: pm.environment.get('base_url') + '/api/auth/login',
+          method: 'POST',
+          header: { 'Content-Type': 'application/json' },
+          body: {
+            mode: 'raw',
+            raw: JSON.stringify({
+              email: 'davidsimiyu341@gmail.com',
+              password: 'DevAdmin123!'
+            })
+          }
+        }, function (err, res) {
+          if (!err && res.code === 200) {
+            const newToken = res.json().token;
+            pm.environment.set('admin_token', newToken);
+          }
+        });
+      }

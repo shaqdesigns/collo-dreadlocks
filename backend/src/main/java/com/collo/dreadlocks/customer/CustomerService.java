@@ -42,6 +42,39 @@ public class CustomerService {
     }
 
     @Transactional
+    public Customer registerAccount(
+            String name,
+            String phone,
+            String email,
+            LocalDate dateOfBirth) {
+        String normalizedPhone = phone.trim();
+        String normalizedName = name.trim();
+        String normalizedEmail = normalizeEmail(email);
+
+        return customerRepository.findByPhone(normalizedPhone)
+                .map(existing -> {
+                    existing.setName(normalizedName);
+                    if (normalizedEmail != null) {
+                        existing.setEmail(normalizedEmail);
+                    }
+                    if (existing.getDateOfBirth() == null && dateOfBirth != null) {
+                        existing.setDateOfBirth(dateOfBirth);
+                    }
+                    existing.setActive(true);
+                    return customerRepository.save(existing);
+                })
+                .orElseGet(() -> {
+                    Customer customer = new Customer();
+                    customer.setName(normalizedName);
+                    customer.setPhone(normalizedPhone);
+                    customer.setEmail(normalizedEmail);
+                    customer.setDateOfBirth(dateOfBirth);
+                    customer.setActive(true);
+                    return customerRepository.save(customer);
+                });
+    }
+
+    @Transactional
     public Customer findOrCreateGuest(String name, String phone, String email) {
         String normalizedPhone = phone == null ? null : phone.trim();
         String normalizedName = name == null ? null : name.trim();

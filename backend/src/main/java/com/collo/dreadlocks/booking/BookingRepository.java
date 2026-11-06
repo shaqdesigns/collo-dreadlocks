@@ -18,6 +18,14 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
 
     List<Booking> findByCustomerIdOrderByStartAtDesc(Integer customerId);
 
+    List<Booking> findByStatusIn(Collection<BookingStatus> statuses);
+
+    boolean existsByServiceId(Integer serviceId);
+
+    boolean existsBySalonistId(Integer salonistId);
+
+    List<Booking> findBySalonistIdOrderByStartAtDesc(Integer salonistId);
+
     List<Booking> findBySalonistIdAndStatusInAndStartAtLessThanAndEndAtGreaterThan(
             Integer salonistId,
             Collection<BookingStatus> statuses,
