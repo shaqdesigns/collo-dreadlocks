@@ -49,17 +49,18 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
             @Param("endAt") LocalDateTime endAt
     );
 
-    @Query("""
-            SELECT b
-            FROM Booking b
-            WHERE (:status IS NULL OR b.status = :status)
-              AND (:fromInclusive IS NULL OR b.startAt >= :fromInclusive)
-              AND (:toExclusive IS NULL OR b.startAt < :toExclusive)
-            ORDER BY b.startAt ASC
-            """)
-    List<Booking> search(
-            @Param("status") BookingStatus status,
-            @Param("fromInclusive") LocalDateTime fromInclusive,
-            @Param("toExclusive") LocalDateTime toExclusive
+    List<Booking> findAllByOrderByStartAtAsc();
+
+    List<Booking> findByStatusOrderByStartAtAsc(BookingStatus status);
+
+    List<Booking> findByStartAtGreaterThanEqualAndStartAtLessThanOrderByStartAtAsc(
+            LocalDateTime fromInclusive,
+            LocalDateTime toExclusive
+    );
+
+    List<Booking> findByStatusAndStartAtGreaterThanEqualAndStartAtLessThanOrderByStartAtAsc(
+            BookingStatus status,
+            LocalDateTime fromInclusive,
+            LocalDateTime toExclusive
     );
 }

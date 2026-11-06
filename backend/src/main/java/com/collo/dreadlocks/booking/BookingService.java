@@ -156,8 +156,18 @@ public class BookingService {
     public List<BookingResponse> search(BookingStatus status, LocalDate date) {
         LocalDateTime from = date == null ? null : date.atStartOfDay();
         LocalDateTime to = date == null ? null : date.plusDays(1).atStartOfDay();
-        return bookingRepository.search(status, from, to)
-                .stream()
+        List<Booking> bookings;
+        if (status == null && from == null) {
+            bookings = bookingRepository.findAllByOrderByStartAtAsc();
+        } else if (status == null) {
+            bookings = bookingRepository.findByStartAtGreaterThanEqualAndStartAtLessThanOrderByStartAtAsc(from, to);
+        } else if (from == null) {
+            bookings = bookingRepository.findByStatusOrderByStartAtAsc(status);
+        } else {
+            bookings = bookingRepository.findByStatusAndStartAtGreaterThanEqualAndStartAtLessThanOrderByStartAtAsc(
+                    status, from, to);
+        }
+        return bookings.stream()
                 .map(this::toResponse)
                 .toList();
     }

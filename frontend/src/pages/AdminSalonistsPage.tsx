@@ -41,13 +41,15 @@ export function AdminSalonistsPage() {
     if (session?.role !== 'ADMIN') {
       return
     }
-    Promise.all([getAdminSalonists(), getAdminBookings(), getAdminUnavailability(), getAdminRemarks(), getServices()])
-      .then(([nextSalonists, nextBookings, nextRequests, nextRemarks, nextServices]) => {
+    getServices()
+      .then(setServices)
+      .catch(() => setError('Could not load services.'))
+    Promise.all([getAdminSalonists(), getAdminBookings(), getAdminUnavailability(), getAdminRemarks()])
+      .then(([nextSalonists, nextBookings, nextRequests, nextRemarks]) => {
         setSalonists(nextSalonists)
         setBookings(nextBookings)
         setRequests(nextRequests)
         setRemarks(nextRemarks)
-        setServices(nextServices)
       })
       .catch(() => setError('Could not load salonists.'))
   }, [session])
