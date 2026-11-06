@@ -24,7 +24,7 @@ export function HomePage() {
         setServices([...locServices].sort((a, b) => rank(a.slug) - rank(b.slug)).slice(0, 4))
         setSalonists(nextSalonists.slice(0, 3))
       })
-      .catch(() => setError('Could not reach the salon catalogue. Is the backend running on port 8080?'))
+      .catch(() => setError('Could not reach the salon catalogue.'))
       .finally(() => setLoading(false))
   }, [])
 

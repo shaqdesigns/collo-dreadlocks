@@ -21,7 +21,15 @@ import type {
   Customer,
 } from '../types/catalog'
 
-const apiBase = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '')
+function resolveApiBase(): string {
+  const configured = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '')
+  if (configured.startsWith('http') && !configured.endsWith('/api')) {
+    return `${configured}/api`
+  }
+  return configured
+}
+
+const apiBase = resolveApiBase()
 
 function absoluteMedia(path: string): string {
   if (/^https?:\/\//i.test(path) || !apiBase.startsWith('http')) {
