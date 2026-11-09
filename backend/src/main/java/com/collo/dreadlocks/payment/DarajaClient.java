@@ -26,13 +26,12 @@ public class DarajaClient {
     private static final DateTimeFormatter TIMESTAMP = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
     private final MpesaProperties properties;
-    private final ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
     private final Clock clock;
     private final HttpClient httpClient;
 
-    public DarajaClient(MpesaProperties properties, ObjectMapper objectMapper, Clock clock) {
+    public DarajaClient(MpesaProperties properties, Clock clock) {
         this.properties = properties;
-        this.objectMapper = objectMapper;
         this.clock = clock;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(15))
