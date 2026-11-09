@@ -1,5 +1,6 @@
 package com.collo.dreadlocks.booking;
 
+import com.collo.dreadlocks.payment.PaymentMethod;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
@@ -16,6 +17,11 @@ public record CreateBookingRequest(
 
         @NotNull(message = "customer is required")
         @Valid
-        GuestCustomerRequest customer
+        GuestCustomerRequest customer,
+
+        @NotNull(message = "Choose M-Pesa or cash")
+        PaymentMethod paymentMethod,
+
+        String mpesaPhone
 ) {
 }

@@ -6,6 +6,8 @@ import com.collo.dreadlocks.availability.SalonistAvailabilityRepository;
 import com.collo.dreadlocks.customer.Customer;
 import com.collo.dreadlocks.customer.CustomerService;
 import com.collo.dreadlocks.notification.NotificationService;
+import com.collo.dreadlocks.payment.Payment;
+import com.collo.dreadlocks.payment.PaymentService;
 import com.collo.dreadlocks.salonist.Salonist;
 import com.collo.dreadlocks.salonist.SalonistNotFoundException;
 import com.collo.dreadlocks.salonist.SalonistRepository;
@@ -13,6 +15,7 @@ import com.collo.dreadlocks.service.ServiceNotFoundException;
 import com.collo.dreadlocks.service.ServiceRepository;
 import com.collo.dreadlocks.unavailability.UnavailabilityRequest;
 import com.collo.dreadlocks.unavailability.UnavailabilityService;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,6 +43,7 @@ public class BookingService {
     private final CustomerService customerService;
     private final UnavailabilityService unavailabilityService;
     private final NotificationService notificationService;
+    private final PaymentService paymentService;
     private final Clock clock;
 
     public BookingService(
@@ -50,6 +54,7 @@ public class BookingService {
             CustomerService customerService,
             UnavailabilityService unavailabilityService,
             NotificationService notificationService,
+            PaymentService paymentService,
             Clock clock) {
         this.bookingRepository = bookingRepository;
         this.serviceRepository = serviceRepository;
@@ -58,6 +63,7 @@ public class BookingService {
         this.customerService = customerService;
         this.unavailabilityService = unavailabilityService;
         this.notificationService = notificationService;
+        this.paymentService = paymentService;
         this.clock = clock;
     }
 
@@ -139,9 +145,25 @@ public class BookingService {
         booking.setPrice(service.getPrice());
         booking.setDurationMinutes(service.getDurationMinutes());
 
-        BookingResponse response = toResponse(bookingRepository.save(booking));
+        Booking saved = bookingRepository.save(booking);
+        paymentService.open(saved, request.paymentMethod(), request.mpesaPhone());
+        BookingResponse response = toResponse(saved);
         notificationService.notifyNewBooking(response);
         return response;
+    }
+
+    @Transactional
+    public void handleMpesaCallback(JsonNode body) {
+        var outcome = paymentService.applyCallback(body);
+        if (outcome.bookingId() == null) {
+            return;
+        }
+        BookingResponse response = getById(outcome.bookingId());
+        if (outcome.paid()) {
+            notificationService.notifyMpesaReceived(response);
+        } else if (outcome.failed()) {
+            notificationService.notifyMpesaFailed(response);
+        }
     }
 
     public BookingResponse getByReference(UUID reference) {
@@ -184,6 +206,7 @@ public class BookingService {
         return bookingRepository.findBySalonistIdOrderByStartAtDesc(salonistId)
                 .stream()
                 .filter(booking -> date == null || booking.getStartAt().toLocalDate().equals(date))
+                .filter(paymentService::visibleToSalonist)
                 .map(this::toResponse)
                 .toList();
     }
@@ -199,7 +222,10 @@ public class BookingService {
 
     @Transactional
     public BookingResponse confirm(Integer id) {
-        return transition(id, BookingStatus.CONFIRMED);
+        paymentService.assertApprovable(id);
+        transition(id, BookingStatus.CONFIRMED);
+        paymentService.markApproved(id);
+        return getById(id);
     }
 
     @Transactional
@@ -335,6 +361,7 @@ public class BookingService {
         Salonist salonist = salonistRepository.findById(booking.getSalonistId())
                 .orElseThrow(() -> new SalonistNotFoundException(booking.getSalonistId()));
 
+        Payment payment = paymentService.findForBooking(booking.getId()).orElse(null);
         return new BookingResponse(
                 booking.getId(),
                 booking.getReference(),
@@ -349,7 +376,12 @@ public class BookingService {
                 booking.getStartAt(),
                 booking.getEndAt(),
                 booking.getDurationMinutes(),
-                booking.getPrice()
+                booking.getPrice(),
+                payment == null ? null : payment.getMethod().name(),
+                payment == null ? null : payment.getStatus().name(),
+                payment == null ? null : payment.getPhone(),
+                payment == null ? null : payment.getMpesaReceipt(),
+                payment == null ? null : payment.getResultDescription()
         );
     }
 }

@@ -54,7 +54,10 @@ public class CalendarService {
                             booking.status().name(),
                             booking.startAt(),
                             booking.endAt(),
-                            booking.serviceName() + " · " + booking.customerName(),
+                            booking.serviceName() + " · " + booking.customerName()
+                                    + (booking.paymentMethod() == null
+                                    ? ""
+                                    : " · " + booking.paymentMethod() + " " + booking.paymentStatus()),
                             booking.id()
                     )));
             timeOff.stream()

@@ -46,27 +46,26 @@ public class NotificationService {
         StudioNotification notification = new StudioNotification();
         notification.setAudience(NotificationAudience.ADMIN);
         notification.setBookingId(booking.id());
-        String message = "New booking: " + booking.serviceName()
+        boolean cash = "CASH".equals(booking.paymentMethod());
+        String method = booking.paymentMethod() == null ? "payment" : booking.paymentMethod();
+        String message = "New " + method + " booking: " + booking.serviceName()
                 + " with " + booking.salonistName()
                 + " for " + booking.customerName()
-                + " at " + booking.startAt().format(WHEN);
+                + " at " + booking.startAt().format(WHEN)
+                + (cash
+                ? ". Confirm the visit to send it to the salonist. The client pays cash on the day."
+                : ". Approve the payment before it goes to the salonist.");
         notification.setMessage(message);
         notificationRepository.save(notification);
         bookingMailer.send(authProperties.getAdmin().getEmail(), "New booking at Collo Dreadlocks", message);
-
-        String chairMessage = "New request: " + booking.serviceName()
-                + " for " + booking.customerName()
-                + " at " + booking.startAt().format(WHEN);
-        saveForSalonist(booking, chairMessage);
-        for (String email : salonistEmails(booking.salonistId())) {
-            bookingMailer.send(email, "New booking request at Collo Dreadlocks", chairMessage);
-        }
 
         String clientMessage = "Hello " + booking.customerName()
                 + ", we received your request for " + booking.serviceName()
                 + " with " + booking.salonistName()
                 + " at " + booking.startAt().format(WHEN)
-                + ". The studio will confirm it shortly.";
+                + (cash
+                ? ". Pay cash when you arrive. The salonist is told once the studio confirms the visit."
+                : ". Complete the M-Pesa prompt. The salonist is told only after the studio approves the payment.");
         saveForCustomer(booking, clientMessage);
         for (String email : customerEmails(booking.customerId())) {
             bookingMailer.send(email, "Your booking request at Collo Dreadlocks", clientMessage);
@@ -91,6 +90,36 @@ public class NotificationService {
         for (String email : customerEmails(booking.customerId())) {
             bookingMailer.send(email, "Your visit is confirmed at Collo Dreadlocks", clientMessage);
         }
+    }
+
+    @Transactional
+    public void notifyMpesaReceived(BookingResponse booking) {
+        String receipt = booking.mpesaReceipt() == null ? "" : " Receipt " + booking.mpesaReceipt() + ".";
+        String message = "M-Pesa received for " + booking.customerName()
+                + ", " + booking.serviceName()
+                + " at " + booking.startAt().format(WHEN)
+                + "." + receipt
+                + " Approve it to send the visit to " + booking.salonistName() + ".";
+        StudioNotification notification = new StudioNotification();
+        notification.setAudience(NotificationAudience.ADMIN);
+        notification.setBookingId(booking.id());
+        notification.setMessage(message);
+        notificationRepository.save(notification);
+        bookingMailer.send(authProperties.getAdmin().getEmail(), "M-Pesa payment received", message);
+    }
+
+    @Transactional
+    public void notifyMpesaFailed(BookingResponse booking) {
+        String message = "M-Pesa was not completed for " + booking.customerName()
+                + ", " + booking.serviceName()
+                + " at " + booking.startAt().format(WHEN)
+                + ". The chair has been released.";
+        StudioNotification notification = new StudioNotification();
+        notification.setAudience(NotificationAudience.ADMIN);
+        notification.setBookingId(booking.id());
+        notification.setMessage(message);
+        notificationRepository.save(notification);
+        bookingMailer.send(authProperties.getAdmin().getEmail(), "M-Pesa payment was not completed", message);
     }
 
     public List<NotificationResponse> listForAdmin() {

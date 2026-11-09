@@ -387,12 +387,19 @@ export async function recordSalonistWork(payload: {
   return data
 }
 
+export async function getBooking(reference: string): Promise<Booking> {
+  const { data } = await http.get<Booking>(`/bookings/${reference}`)
+  return data
+}
+
 export async function createBooking(payload: {
   serviceId: number
   salonistId?: number
   startAt: string
   customer: { name: string; phone: string; email: string | null }
+  paymentMethod: 'MPESA' | 'CASH'
+  mpesaPhone?: string | null
 }): Promise<Booking> {
-  const { data } = await http.post<Booking>('/bookings', payload)
+  const { data } = await http.post<Booking>('/bookings', payload, { timeout: 45000 })
   return data
 }

@@ -1,6 +1,7 @@
 package com.collo.dreadlocks.auth;
 
 import com.collo.dreadlocks.notification.MailProperties;
+import com.collo.dreadlocks.payment.MpesaProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -26,7 +27,7 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
-@EnableConfigurationProperties({AuthProperties.class, MailProperties.class})
+@EnableConfigurationProperties({AuthProperties.class, MailProperties.class, MpesaProperties.class})
 public class SecurityConfig {
 
     @Bean
@@ -74,6 +75,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/bookings/slots").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/bookings").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/bookings/{reference}").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/payments/mpesa/callback").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/salonist/**").hasRole("SALONIST")
                         .requestMatchers("/api/me/**").hasRole("CUSTOMER")

@@ -195,4 +195,9 @@ export type Booking = {
   endAt: string
   durationMinutes: number
   price: number
+  paymentMethod?: string | null
+  paymentStatus?: string | null
+  paymentPhone?: string | null
+  mpesaReceipt?: string | null
+  paymentMessage?: string | null
 }

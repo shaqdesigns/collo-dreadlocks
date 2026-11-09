@@ -18,6 +18,11 @@ public record BookingResponse(
         LocalDateTime startAt,
         LocalDateTime endAt,
         Integer durationMinutes,
-        BigDecimal price
+        BigDecimal price,
+        String paymentMethod,
+        String paymentStatus,
+        String paymentPhone,
+        String mpesaReceipt,
+        String paymentMessage
 ) {
 }

@@ -88,7 +88,7 @@ export function AdminCalendarPage() {
       <p className="text-xs uppercase tracking-[0.25em] text-gold">Admin</p>
       <h1 className="font-display mt-3 text-5xl">Calendar</h1>
       <p className="mt-3 max-w-2xl text-sm text-muted">
-        A booked or approved time-off block makes that salonist unavailable. Confirm a pending visit only when the chair is free.
+        A booked or approved time-off block makes that salonist unavailable. Confirm a cash visit to send it to the salonist. Approve an M-Pesa visit only after Safaricom has received the payment.
       </p>
       <AdminNav />
       <div className="mt-8 flex items-center gap-4">
@@ -140,7 +140,7 @@ export function AdminCalendarPage() {
                             onClick={() => confirm(block.bookingId!)}
                             className="mt-1 rounded-full bg-ink px-2 py-1 text-[11px] text-paper"
                           >
-                            Confirm
+                            {block.label.includes('CASH') ? 'Confirm booking' : 'Approve payment'}
                           </button>
                         )}
                       </div>

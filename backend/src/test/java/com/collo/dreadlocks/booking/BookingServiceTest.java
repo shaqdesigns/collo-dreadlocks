@@ -10,6 +10,8 @@ import com.collo.dreadlocks.salonist.SalonistRepository;
 import com.collo.dreadlocks.service.Service;
 import com.collo.dreadlocks.service.ServiceNotFoundException;
 import com.collo.dreadlocks.service.ServiceRepository;
+import com.collo.dreadlocks.payment.PaymentMethod;
+import com.collo.dreadlocks.payment.PaymentService;
 import com.collo.dreadlocks.unavailability.UnavailabilityService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -53,6 +55,8 @@ class BookingServiceTest {
     private CustomerService customerService;
     @Mock
     private UnavailabilityService unavailabilityService;
+    @Mock
+    private PaymentService paymentService;
 
     private BookingService bookingService;
 
@@ -66,6 +70,7 @@ class BookingServiceTest {
                 customerService,
                 unavailabilityService,
                 org.mockito.Mockito.mock(com.collo.dreadlocks.notification.NotificationService.class),
+                paymentService,
                 CLOCK
         );
     }
@@ -128,6 +133,7 @@ class BookingServiceTest {
         when(customerService.findOrCreateGuest("Guest Client", "0799000001", null))
                 .thenReturn(guest());
         when(customerService.requireCustomer(8)).thenReturn(guest());
+        when(paymentService.findForBooking(20)).thenReturn(Optional.empty());
         when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> {
             Booking saved = invocation.getArgument(0);
             saved.setId(20);
@@ -139,7 +145,9 @@ class BookingServiceTest {
                 1,
                 1,
                 LocalDateTime.of(2026, 11, 10, 9, 0),
-                new GuestCustomerRequest("Guest Client", "0799000001", null)
+                new GuestCustomerRequest("Guest Client", "0799000001", null),
+                PaymentMethod.CASH,
+                null
         );
 
         BookingResponse response = bookingService.create(request);
@@ -159,7 +167,9 @@ class BookingServiceTest {
                 1,
                 2,
                 LocalDateTime.of(2026, 11, 10, 9, 0),
-                new GuestCustomerRequest("Guest Client", "0799000001", null)
+                new GuestCustomerRequest("Guest Client", "0799000001", null),
+                PaymentMethod.CASH,
+                null
         );
 
         assertThrows(SalonistNotFoundException.class, () -> bookingService.create(request));
