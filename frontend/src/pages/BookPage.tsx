@@ -126,7 +126,7 @@ export function BookPage() {
       })
       setBooking(created)
     } catch (cause) {
-      setError(apiError(cause, 'That slot may have just been taken. Pick another time.'))
+      setError(apiError(cause, 'The booking was not completed. This time is still open.'))
     } finally {
       setSubmitting(false)
     }

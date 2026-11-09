@@ -400,6 +400,6 @@ export async function createBooking(payload: {
   paymentMethod: 'MPESA' | 'CASH'
   mpesaPhone?: string | null
 }): Promise<Booking> {
-  const { data } = await http.post<Booking>('/bookings', payload, { timeout: 45000 })
+  const { data } = await http.post<Booking>('/bookings', payload, { timeout: 60000 })
   return data
 }
