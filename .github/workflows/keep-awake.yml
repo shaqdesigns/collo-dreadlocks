@@ -1,0 +1,15 @@
+name: Keep API awake
+
+on:
+  schedule:
+    # Render sleeps after about 15 minutes with no traffic.
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping the health check
+        run: curl --fail --retry 4 --retry-all-errors --retry-delay 5 --max-time 90 -sS https://collo-dreadlocks.onrender.com/api/health
