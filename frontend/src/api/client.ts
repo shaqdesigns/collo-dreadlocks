@@ -59,7 +59,7 @@ function rewriteMedia(value: unknown): void {
 
 const http = axios.create({
   baseURL: apiBase,
-  timeout: 15000,
+  timeout: 60000,
 })
 
 http.interceptors.response.use((response) => {
